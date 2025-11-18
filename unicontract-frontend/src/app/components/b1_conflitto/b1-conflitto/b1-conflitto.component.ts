@@ -7,7 +7,7 @@ import { InsegnamTools } from './../../../classes/insegnamTools';
 import { PrecontrattualeService } from './../../../services/precontrattuale.service';
 import { Updb1 } from './../../../classes/precontrattuale';
 import { encode, decode } from 'base64-arraybuffer';
-import { FormGroup } from '@angular/forms';
+import { UntypedFormGroup } from '@angular/forms';
 import { FormlyFieldConfig, FormlyFormOptions } from '@ngx-formly/core';
 import { TranslateService } from '@ngx-translate/core';
 import { takeUntil, tap } from 'rxjs/operators';
@@ -22,7 +22,7 @@ import { NgbStringAdapter } from 'src/app/NgbStringAdapter';
 
 export class B1ConflittoComponent extends BaseComponent {
 
-  items: B1Conflitto;
+  items: B1Conflitto = null;
   private precontr: Updb1;
   idins: number;
   adapter = new NgbStringAdapter();   
@@ -33,7 +33,7 @@ export class B1ConflittoComponent extends BaseComponent {
       isLoading: this.isLoading,
     },
   };
-  form = new FormGroup({});
+  form = new UntypedFormGroup({});
 
   fieldsCarica: FormlyFieldConfig[] = [
         // ente carica oggetto
@@ -438,6 +438,7 @@ export class B1ConflittoComponent extends BaseComponent {
               templateOptions: {
                 required: true,
                 label: 'Attività professionale',
+                maxLength: 190
               },
               hideExpression: (model, formstate) => {
                 return (!model.flag_attivita);

@@ -26,9 +26,12 @@ use App\Models\D6_detrazioni_familiari;
 use App\Models\E_AutonomoOccasionale;
 use App\Models\TitulusRef;
 use App\Models\StoryProcess;
+use App\Models\FirmaIO;
+use App\Models\FirmaUSIGN;
 use Carbon\Carbon;
-use Brexis\LaravelWorkflow\Traits\WorkflowTrait;
+use ZeroDaHero\LaravelWorkflow\Traits\WorkflowTrait;
 use Illuminate\Support\Facades\Cache;
+
 
 class Precontrattuale extends Model {
     
@@ -59,9 +62,12 @@ class Precontrattuale extends Model {
         'd5_fiscali_resid_estero_id',
         'd6_detraz_fam_carico_id',
         'e_autonomo_occasionale_id',
-        'docente_id',
+        'docente_id', //incerito id_ab dell'anagrafica
         'motivazione',
-        'tipo_annullamento'
+        'tipo_annullamento',
+        'id_sorgente_rinnovo',
+        'sorgente_rinnovo_per_id',
+        'motivazione_sorgente_rinnovo'
     ];
 
     public static function boot()
@@ -78,7 +84,110 @@ class Precontrattuale extends Model {
         });
     }
 
-    protected $appends = ['currentState'];
+    public $appends = ['currentState'];
+
+    //significa le precontrattuali che hanno indicato questo id come sorgente del rinnovo nel campo id_sorgente_rinnovo 
+    // id è locale 
+    // id_sorgente_rinnovo è nella related
+    //se valorizzata indica che questo id è stato usato...
+    public function rinnoviSuccessivi()
+    {
+        return $this->hasMany(Precontrattuale::class, 'id_sorgente_rinnovo', 'id'); //->where('stato','<',2);
+    }
+
+    // Define the belongsTo relationship for the renewal source (precedente precontrattuale origine del rinnovo) 
+    //cioè la precontrattuale a cui si riferisce id_sorgente_rinnovo 
+    public function sorgenteRinnovo()
+    {
+        return $this->belongsTo(Precontrattuale::class, 'id_sorgente_rinnovo', 'id'); //->where('stato','<',2);
+    }
+
+    // Define the recursive relationship
+    public function allrinnoviSuccessivi()
+    {
+        // Initialize an empty collection to hold all children
+        $children = collect([]);
+
+        // Iterate through direct children
+        foreach ($this->rinnoviSuccessivi as $child) {
+            // Add each child to the collection
+            $children->push($child);
+            // Recursively add all descendants of this child
+            $children = $children->merge($child->allrinnoviSuccessivi());
+        }
+
+        return $children;
+    }
+
+    
+    public function getIsNotReferredAttribute()
+    {
+        $count = $this->rinnoviSuccessivi()->where('stato','<',2)->count() == 0;
+        return $count;
+    }
+    
+    // Recursive method to collect all related Precontrattuali via sorgenteRinnovo
+    public function allSorgenteRinnovo()
+    {
+        $records = collect([]);
+
+        // Add the current record to the collection
+        $records->push($this);
+
+        // Recursively collect all related records through sorgenteRinnovo
+        if ($this->sorgenteRinnovo) {
+            $records = $records->merge($this->sorgenteRinnovo->allSorgenteRinnovo());
+        }
+
+        return $records;
+    }
+
+    public function isCompleteChain(){
+        // Start by assuming the chain is complete
+        $isCompleteChain = true;
+        $rootPrecontr = $this;
+
+        // Traverse the chain until we find the root (where id_sorgente_rinnovo is null)
+        while ($rootPrecontr->id_sorgente_rinnovo !== null) {
+            $rootPrecontr = Precontrattuale::withoutGlobalScopes()
+                ->where('id', $rootPrecontr->id_sorgente_rinnovo)                
+                ->where('stato','<',2)
+                ->first();
+
+            // If we can't find the next precontr in the chain, something is wrong
+            if (!$rootPrecontr) {
+                $isCompleteChain = false;
+                break;
+            }
+        }
+
+        // Check if the root precontr's motivo_atto is BANC_INC
+        if ($isCompleteChain && $rootPrecontr->insegnamento->motivo_atto !== 'BAN_INC') {
+            $isCompleteChain = false;
+        }
+
+        return $isCompleteChain;
+    }
+    
+    public function countSorgenteRinnovo()
+    {
+        // // First, check if the chain is complete
+        // if (!$this->isCompleteChain()) {
+        //     return null; // If the chain is not complete, return null
+        // }
+
+        // Chain is complete, count the number of sorgenteRinnovo
+        $count = 0;
+        $currentPrecontr = $this;
+
+        // Traverse the chain using the belongsTo relationship until we find the root (where sorgenteRinnovo is null)
+        while ($currentPrecontr->sorgenteRinnovo) {
+            $currentPrecontr = $currentPrecontr->sorgenteRinnovo;
+            $count++;
+        }
+
+        return $count;
+    }
 
     //In your example, if A has a b_id column, then A belongsTo B.
     //If B has an a_id column, then A hasOne or hasMany B depending on how many B should have.
@@ -232,6 +341,46 @@ class Precontrattuale extends Model {
     public function titulusref()
     {
         return $this->hasOne(TitulusRef::class,'insegn_id','insegn_id');        
+    }
+
+    public function firmaIO()
+    {
+        return $this->hasMany(FirmaIO::class, 'precontr_id', 'id');
+    }  
+       
+    public function firmaUSIGN()
+    {
+        return $this->hasMany(FirmaUSIGN::class, 'precontr_id', 'id');
+    }  
+
+    public function latestFirmaIOnotRejected()
+    {        
+        return $this->firmaIO()
+                    ->whereNotIn('stato', ['REJECTED', 'CANCELLED', 'EXPIRED'])
+                    ->orderBy('created_at', 'desc')
+                    ->first();
+
+        //return $this->hasOne(FirmaIO::class, 'precontr_id', 'id')->latestOfMany();
+    }
+
+    public function latestFirmaUSIGNnotRejected()
+    {
+        return $this->firmaUSIGN()
+                    ->whereNotIn('stato', ['rejected', 'cancelled', 'expired', 'failed'])
+                    ->orderBy('created_at', 'desc')
+                    ->first();
+                    
+        //return $this->hasOne(FirmaUSIGN::class, 'precontr_id', 'id')->latestOfMany()->where('stato','!=','rejected');
+    }
+    
+    /**
+     * firmaUtente
+     * restituisce l'entità di firma corrente U-Sign o FirmaIO
+     *
+     * @return FirmaUtenteInterface
+     */
+    public function firmaUtente(){
+        return $this->latestFirmaUSIGNnotRejected() ?? $this->latestFirmaIOnotRejected();
     }
 
 
@@ -418,6 +567,7 @@ class Precontrattuale extends Model {
               $this->d3_tributari_id !== 0 &&
               $this->d4_fiscali_id !== 0 &&
               (($this->anagrafica->provincia_fiscale === 'EE' && $this->d5_fiscali_resid_estero_id !== 0) || $this->anagrafica->provincia_fiscale !== 'EE') &&
+              ((($this->insegnamento->compenso > 3000 && $this->insegnamento->aa >= 2022) ? $this->a2modalitapagamento->soluzione_pagamento : true) ) &&
               $this->d6_detraz_fam_carico_id !== 0) {
               return true;
             }
@@ -438,7 +588,11 @@ class Precontrattuale extends Model {
             return false;
           }
     }
-
+    
+    public function annoAccademico()
+    {        
+        return $this->insegnamento->aa.'/'.((int)$this->insegnamento->aa+1);
+    }
 }  
       
 

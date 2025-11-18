@@ -20,7 +20,7 @@ export class AnagraficaLocalService extends CoreSevice {
   }
 
   getAnagraficaLocal(id: string) {
-    return this.http.get(this._baseURL + '/local/' + id).pipe(catchError(this.handleError('getAnagraficaLocal', null, false)));
+    return this.http.get(this._baseURL + '/local/' + id).pipe(catchError(this.handleError('getAnagraficaLocal', null, true)));
   }
 
   newAnagraficaLocal(anagraficaLocal: AnagraficaLocalInterface) {

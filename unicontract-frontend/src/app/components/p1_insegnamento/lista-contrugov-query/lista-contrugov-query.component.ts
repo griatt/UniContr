@@ -17,7 +17,7 @@ import { annoAccademicoCorrente } from 'src/app/shared/dynamic-form/utils';
 })
 export class ListaContrugovQueryComponent extends BaseResearchComponent {
   enabledExport = false;
-  translate: MyTranslatePipe;
+  translate: MyTranslatePipe; 
 
   fieldsRow: FormlyFieldConfig[] = [
     {
@@ -27,14 +27,7 @@ export class ListaContrugovQueryComponent extends BaseResearchComponent {
         label: 'Anno',
         valueProp: 'value',
         labelProp: 'label',
-        options: [
-          {value: '2016', label: '2016 / 2017'},
-          {value: '2017', label: '2017 / 2018'},
-          {value: '2018', label: '2018 / 2019'},
-          {value: '2019', label: '2019 / 2020'},
-          {value: '2020', label: '2020 / 2021'},
-          {value: '2021', label: '2021 / 2022'},
-        ]
+        options: this.service.getAnniAccademici()
       }
     },
     {
@@ -44,9 +37,9 @@ export class ListaContrugovQueryComponent extends BaseResearchComponent {
         label: 'Contratto in contabilità',
         required: true,
         options: [
-          {key: 'compensidaemettere', value: 'Compensi da emettere'}, //tutti
-          {key: 'ordinatividaemettere', value: 'Ordinativi da emettere'}, //tutti
-          {key: 'compensioordinativiemettere', value: 'Compensi o ordinativi da emettere'}     
+          {value: 'compensidaemettere', label: 'Compensi da emettere'}, //tutti
+          {value: 'ordinatividaemettere', label: 'Ordinativi da emettere'}, //tutti
+          {value: 'compensioordinativiemettere', label: 'Compensi o ordinativi da emettere'}     
         ]
       }
     },   
@@ -66,13 +59,13 @@ export class ListaContrugovQueryComponent extends BaseResearchComponent {
       templateOptions: {
         label: 'Dipartimento',
         options: [
-          { key: '005019', value: this.translateService.instant('005019_disb') },
-          { key: '004919', value: this.translateService.instant('004919_dispea')},
-          { key: '004419', value: this.translateService.instant('004419_digiur') },
-          { key: '004940', value: this.translateService.instant('004940_discui') },
-          { key: '005579', value: this.translateService.instant('005579_discui') },
-          { key: '004939', value: this.translateService.instant('004939_distum') },
-          { key: '004424', value: this.translateService.instant('004424_desp') }
+          { value: '005019', label: this.translateService.instant('005019_disb') },
+          { value: '004919', label: this.translateService.instant('004919_dispea')},
+          { value: '004419', label: this.translateService.instant('004419_digiur') },
+          { value: '004940', label: this.translateService.instant('004940_discui') },
+          { value: '005579', label: this.translateService.instant('005579_discui') },
+          { value: '004939', label: this.translateService.instant('004939_distum') },
+          { value: '004424', label: this.translateService.instant('004424_desp') }
         ]
       }
     },
@@ -112,14 +105,23 @@ export class ListaContrugovQueryComponent extends BaseResearchComponent {
       templateOptions: {
         label: 'Natura del rapporto',
         options: [
-          { key: 'PRPR', value: this.translateService.instant('p3_radio1') },
-          { key: 'COCOCO', value: this.translateService.instant('p3_radio2')},
-          { key: 'PLAO', value: this.translateService.instant('p3_radio3') },
-          { key: 'PTG', value: this.translateService.instant('p3_radio4') },
-          { key: 'ALD', value: this.translateService.instant('p3_radio5') }
+          { value: 'PRPR', label: this.translateService.instant('p3_radio1') },
+          { value: 'COCOCO', label: this.translateService.instant('p3_radio2')},
+          { value: 'PLAO', label: this.translateService.instant('p3_radio3') },
+          { value: 'PTG', label: this.translateService.instant('p3_radio4') },
+          { value: 'ALD', label: this.translateService.instant('p3_radio5') }
         ],
         required: true,
         column: { cellTemplate: 'valuecolumn'}
+      }
+    },
+    {
+      key: 'insegnamento.compenso',
+      type: 'number',
+      templateOptions: {
+        type: 'number',
+        label: 'Compenso',
+        required: true,        
       }
     },
     {
@@ -128,8 +130,8 @@ export class ListaContrugovQueryComponent extends BaseResearchComponent {
       templateOptions: {
         label: 'Rinuncia al compenso',
         options: [
-          { key: true, value: this.translateService.instant('txt_si') },
-          { key: false, value: this.translateService.instant('txt_no')},
+          { value: true, label: this.translateService.instant('txt_si') },
+          { value: false,label: this.translateService.instant('txt_no')},
         ],
         required: true,
         column: { cellTemplate: 'valuecolumn'}
@@ -184,7 +186,7 @@ export class ListaContrugovQueryComponent extends BaseResearchComponent {
   }
 
   resultMetadata: FormlyFieldConfig[];
-  @ViewChild('tooltip') tooltipCellTemplate: TemplateRef<any>;
+  @ViewChild('tooltip', { static: true }) tooltipCellTemplate: TemplateRef<any>;
 
   constructor(protected service: ContrUgovService, router: Router, route: ActivatedRoute, private translateService: TranslateService) {
     super(router, route);
@@ -239,7 +241,7 @@ export class ListaContrugovQueryComponent extends BaseResearchComponent {
           { name: 'Nome', prop: 'precontr.user.nome', width: 120, maxWidth: 150 },
           { name: 'Data inizio', prop: 'precontr.insegnamento.data_ini_contr', width: 100, maxWidth: 150, type: 'date' },
           { name: 'Data fine', prop: 'precontr.insegnamento.data_fine_contr', width: 100, maxWidth: 150, type: 'date' },
-          { name: 'Dipartimento', prop: 'id_uo_aff', cellTemplate: this.tooltipCellTemplate, width: 100, maxWidth: 100 }, //"27605"
+          { name: 'Dipartimento', prop: 'precontr.insegnamento.dip_cod', cellTemplate: this.tooltipCellTemplate, width: 100, maxWidth: 100 }, //"27605"
           { name: 'Anno', prop: 'datibase.anno_rif', width: 70, maxWidth: 70 },                    
           { name: 'Descrizione', prop: 'datibase.ds_dg', width: 450 },
           { name: 'Stato contabile', prop: 'datibase.stato_dg', pipe: this.translate, width: 80, maxWidth: 80 },

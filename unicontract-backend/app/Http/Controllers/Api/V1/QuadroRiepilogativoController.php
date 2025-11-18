@@ -12,6 +12,7 @@ use App\User;
 use Auth;
 use App\Service\EmailService;
 use Illuminate\Support\Str;
+use App\Service\NotificaService;
 
 class QuadroRiepilogativoController extends Controller
 {
@@ -22,6 +23,8 @@ class QuadroRiepilogativoController extends Controller
      */
     public function index($id)
     {
+        //!!!!Nota che $id invece di essere id della precontrattuale è insegn_id per compatibilità
+
         $datiGenerali = [];
         $message = '';
 
@@ -40,6 +43,9 @@ class QuadroRiepilogativoController extends Controller
             ->leftJoin('table_validation', function($join) {
                 $join->on('table_validation.insegn_id', '=', 'precontr.insegn_id');
             })
+            ->leftJoin('table_titulus_ref', function($join) {
+                $join->on('table_titulus_ref.insegn_id', '=', 'precontr.insegn_id');
+            })
             ->where('precontr.insegn_id', $id);
             $datiGenerali = $queryBuilder->first(
                 ['users.id AS userid',
@@ -55,13 +61,15 @@ class QuadroRiepilogativoController extends Controller
                  'p1_insegnamento.coper_id',
                  'p2_natura_rapporto.natura_rapporto',
                  'a1_anagrafica.sesso',
-                 'table_validation.*'
+                 'table_validation.*',
+                 'table_titulus_ref.num_protocollo',
+                 'table_titulus_ref.num_repertorio'
                  ]);
  
 
             $pre = Pre::with(['attachments','user.attachments','anagrafica.audit','a2modalitapagamento.audit'])->where('insegn_id', $id)->first();            
             $datiGenerali['attachments'] = $pre->attachments ?: [];                        
-            $datiGenerali['userattachments'] = $pre->user ? $pre->user->attachments ?: [] : [];            
+            $datiGenerali['userattachments'] = $pre->user ? ($pre->user->attachments ?: []) : [];            
             if ($pre->a2modalitapagamento){
                     $datiGenerali['a2modalitapagamentoaudit'] = $pre->a2modalitapagamento->audit()->whereIn('id',
                     $pre->a2modalitapagamento->audit()->selectRaw('max(`id`)')->groupBy('field_name')->get()
@@ -79,6 +87,12 @@ class QuadroRiepilogativoController extends Controller
             }
             $datiGenerali['richiesta'] = $pre->sendemails()->with(['user'])->where('codifica','INFO')->orderBy('id','desc')->first();
             
+            $datiGenerali['notifiche'] = (new NotificaService())->getNotifiche('contratto',$pre);
+
+            $datiGenerali['firmaUtente'] = $pre->firmaUtente();
+        
+            $datiGenerali['tipiFirmaAttivi'] = $pre->user->getTipiFirmaAttivi();
+
             $success = true;
       
         return compact('datiGenerali', 'message', 'success');

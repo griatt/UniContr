@@ -1,10 +1,10 @@
 import { AuthService } from './core/auth.service';
-import { CommonModule, LOCATION_INITIALIZED } from '@angular/common';
+import { CommonModule, DatePipe, LOCATION_INITIALIZED } from '@angular/common';
 import { RouterModule, Routes, Router } from '@angular/router';
 import { RoutingModuleModule } from './routing-module/routing-module.module';
 import { BrowserModule } from '@angular/platform-browser';
-import { NgModule, Component, LOCALE_ID, Injector, APP_INITIALIZER } from '@angular/core';
-import { HttpModule } from '@angular/http';
+import { NgModule, Component, LOCALE_ID, Injector, APP_INITIALIZER, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
+
 import { JwtModule } from '@auth0/angular-jwt';
 import { AppComponent } from './app.component';
 import { HttpClientModule, HttpClient } from '@angular/common/http';
@@ -148,7 +148,7 @@ import { NgxDatatableModule } from '@swimlane/ngx-datatable';
 import { PdfViewerModule } from 'ng2-pdf-viewer';
 import { ToastrModule } from 'ngx-toastr';
 
-import { LoadingModule } from 'ngx-loading';
+import { NgxLoadingModule } from 'ngx-loading';
 
 import { FormlyBootstrapModule } from '@ngx-formly/bootstrap';
 
@@ -211,6 +211,15 @@ import { MyMissingTranslationHandler } from './shared/MyMissingTranslationHandle
 import { LogAttivitaComponent } from './components/user/logattivita.component';
 import { LogAttivitaService } from './services/logattivita.service';
 import { SettingsService } from './services/settings.service';
+import { SessionStorageService } from './services/session-storage.service';
+import { NotificaService } from './shared/notifica.service';
+import { NotificaComponent } from './components/user/notifica.component';
+import { NotificheComponent } from './components/user/notifiche.component';
+import { WrapperNotificheComponent } from './components/wrapper-notifiche/wrapper-notifiche.component';
+import { AppConstants } from './app-constants';
+import { FormlyModule } from '@ngx-formly/core';
+import { PrecontrattualeDocenteService } from './services/precontrattualedocente.service';
+import { BreadcrumbService } from './services/breadcrumb.service';
 
 
 
@@ -247,234 +256,292 @@ export function appInitializerFactory(translate: TranslateService, injector: Inj
 }
 
 @NgModule({
-  declarations: [
-    AppComponent,
-    NavbarComponent,
-    ListaInsegnComponent,
-    InsegnamentoComponent,
-    InsegnDetailComponent,
-    InsegnFormComponent,
-    ListaInsegnamentiUgovComponent,
-    InsegnamentoUgovComponent,
-    InsegnUgovDetailComponent,
-    P2PosizioneInsComponent,
-    P2DetailsComponent,
-    HomeComponent,
-
-    NotFoundComponentComponent,
-
-    UserComponent,
-    UsersComponent,
-    PermissionComponent,
-    PermissionsComponent,
-    RoleComponent,
-    RolesComponent,
-    MappingRuolo,
-    MappingRuoli,
-
-    PersoneinterneTitulus,
-    StruttureEsterneTitulus,
-    StruttureInterneTitulus,
-    DocumentiTitulus,
-    AnagraficaDetailsComponent,
-    PagamentoDetailsComponent,
-    AnagraficaLocalDetailsComponent,
-    PagamentoLocalDetailsComponent,
-    PagamentoLocalUpdateComponent,
-    B1ConflittoComponent,
-    B1ConflittoDetailsComponent,
-    B2IncompatibilitaComponent,
-    B2IncompatibilitaDetailsComponent,
-    B3RappStudioUnivComponent,
-    B3RappStudioUnivDetailsComponent,
-    ListaInsegnQueryComponent,
-    ListaPrecontrQueryComponent,
-    ListaContrugovQueryComponent,
-    B4RappPaComponent,
-    B4RappPaDetailsComponent,
-    B5StatoPensionComponent,
-    B5StatoPensionDetailsComponent,
-    B6PrivacyComponent,
-    B6PrivacyDetailsComponent,
-    CPrestazProfessDetailsComponent,
-    CPrestazProfessComponent,
-    D1InpsComponent,
-    D1InpsDetailsComponent,
-    QuadroRiepilogativoComponent,
-    EOccasionaleComponent,
-    EOccasionaleDetailsComponent,
-    D2InailComponent,
-    D2InailDetailsComponent,
-    D3TributariDetailsComponent,
-    D3TributariComponent,
-    D4FiscaliComponent,
-    D4FiscaliDetailsComponent,
-    BarraComandiComponent,
-    D5FiscaliesteroDetailsComponent,
-    D5FiscaliesteroComponent,
-    D6DetrazionifamiliariComponent,
-    D6DetrazionifamiliariDetailsComponent,
-    TerminaButtonComponent,
-    StoryProcessComponent,
-    SommarioComponent,
-    ProceduraComponent,
-    ProseguiButtonComponent,
-    LinkEsterniComponent,
-    EmailListComponent,
-    IntestazioneComponent,
-    SalvaAnnullaButtonComponent,    
-    MappingUfficiTitulus,
-    MappingUfficioTitulus,
-    LogAttivitaComponent,
-  ],
-
-  imports: [
-    SharedModule.forRoot(),
-    NgxPermissionsModule.forRoot(),
-    CommonModule,
-    NgbModule.forRoot(),
-    NgbTooltipModule,
-    HttpModule,
-    FormsModule,
-    ReactiveFormsModule,
-    NgxDatatableModule,
-    RouterModule,
-    LoadingModule,
-    PerfectScrollbarModule,
-    NgSelectModule,
-    BrowserModule,
-    FormsModule,
-    HttpClientModule,
-    ReactiveFormsModule,
-    SharedModule,
-    RoutingModuleModule,
-    CoreModule,
-    NgxDatatableModule,
-    NgxPermissionsModule.forRoot(),
-    PerfectScrollbarModule,
-    ToastrModule.forRoot(),
-    StorageServiceModule,
-    PdfViewerModule,
-    JwtModule.forRoot({
-      config: {
-        tokenGetter: tokenGetter,
-        whitelistedDomains: environment.whitelistedDomains, // ['localhost:4200', 'pcoliva.uniurb.it','unidemdev.uniurb.it'],
-        blacklistedRoutes: environment.blacklistedRoutes, // ['localhost:4200/auth/']
-      }
-    }),
-    TranslateModule.forRoot({
-      missingTranslationHandler: {provide: MissingTranslationHandler, useClass: MyMissingTranslationHandler},
-      loader: {
-        provide: TranslateLoader,
-        useFactory: HttpLoaderFactory,
-        deps: [HttpClient],
-      },
-    }),
-
-  ],
-
-  exports: [
-    HomeComponent,
-    UserComponent,
-    UsersComponent,
-    RoleComponent,
-    RolesComponent,
-    PermissionComponent,
-    PermissionsComponent,
-    MappingRuolo,
-    MappingRuoli,
-    LogAttivitaComponent,
-  ],
-
-  providers: [
-    AuthService,
-    NgbActiveModal,
-    AuthGuard,
-    LoginActivate,
-    InsegnamentoService,
-    InsegnUgovService,
-    ContrUgovService,
-    P2rapportoService,
-    PrecontrattualeService,
-    ValidazioneService,
-    SummaryService,
-    AnagraficaService,
-    PagamentoService,
-    DocenteService,
-    RuoloDocenteService,
-    AnagraficaLocalService,
-    B1ConflittoService,
-    B2IncompatibilitaService,
-    B3RappStudioUnivService,
-    B3JoinRapportoService,
-    B4RappPAService,
-    B5StatoPensionamentoService,
-    B6InformativaService,
-    CPrestazProfessService,
-    D1InpsService,
-    D2InailService,
-    D3TributariService,
-    D4FiscaliService,
-    D5FiscaliEsteroService,
-    D6DetrazioniFamiliariService,
-    EOccasionaleService,
-    StoryProcessService,
-    EmailListService,
-    ConfirmationDialogService,
-    // ApplicationService,
-    UserService,
-    MessageService,
-    MessageCacheService,
-    RoleService,
-    PermissionService,
-    LogAttivitaService,
-    HttpInterceptorProviders,
-    GlobalErrorHandlerProviders,
-    { provide: PERFECT_SCROLLBAR_CONFIG, useValue: DEFAULT_PERFECT_SCROLLBAR_CONFIG },
-    { provide: RequestCache, useClass: RequestCacheWithMap },
-    // { provide: 'InsegnamentoService', useClass: InsegnamentoService },
-    { provide: 'userService', useClass: UserService },
-    { provide: 'unitaorganizzativaService', useClass: UnitaOrganizzativaService },    
-    { provide: 'roleService', useClass: RoleService },
-    { provide: LOCALE_ID, useValue: 'it' },
-    // { provide: 'applicationService', useClass: ApplicationService },
-    // { provide: NgbDateAdapter, useClass: NgbStringAdapter },
-    // { provide: NgbDateParserFormatter, useClass: NgbDateCustomParserFormatter },
-    { provide: APP_BASE_HREF, useValue: environment.baseHref},
-    PersonaInternaService,
-    StrutturaInternaService,
-    StrutturaEsternaService,
-    DocumentoService,
-    MappingRuoloService,
-    MappingUfficioService,
-    SettingsService,
-    {provide: 'personainternaService', useClass: PersonaInternaService},
-    {provide: 'strutturainternaService', useClass: StrutturaInternaService},
-    {provide: 'strutturaesternaService', useClass: StrutturaEsternaService},
-    {provide: 'mappingufficititulusService', useClass: MappingUfficioService},
-    {provide: 'documentoService', useClass: DocumentoService },
-    {provide: 'mappingruoloService', useClass: MappingRuoloService },
-    {provide: NgbDateAdapter, useClass: NgbStringAdapter},
-    {provide: NgbDateParserFormatter, useClass: NgbDateCustomParserFormatter},
-    {  
-      provide: APP_INITIALIZER,
-      useFactory: appInitializerFactory,
-      deps: [TranslateService, Injector],
-      multi: true
-    },       
-    InsegnamTools,
-    RouteMetods,    
-  ],
-
-  bootstrap: [
-    AppComponent
-  ],
-
-  entryComponents: [ConfirmationDialogComponent, InputConfirmationDialogComponent],
-
+    declarations: [
+        AppComponent,
+        NavbarComponent,
+        ListaInsegnComponent,
+        InsegnamentoComponent,
+        InsegnDetailComponent,
+        InsegnFormComponent,
+        ListaInsegnamentiUgovComponent,
+        InsegnamentoUgovComponent,
+        InsegnUgovDetailComponent,
+        P2PosizioneInsComponent,
+        P2DetailsComponent,
+        HomeComponent,
+        NotFoundComponentComponent,
+        UserComponent,
+        UsersComponent,
+        PermissionComponent,
+        PermissionsComponent,
+        RoleComponent,
+        RolesComponent,
+        MappingRuolo,
+        MappingRuoli,
+        NotificaComponent,
+        NotificheComponent,
+        PersoneinterneTitulus,
+        StruttureEsterneTitulus,
+        StruttureInterneTitulus,
+        DocumentiTitulus,
+        AnagraficaDetailsComponent,
+        PagamentoDetailsComponent,
+        AnagraficaLocalDetailsComponent,
+        PagamentoLocalDetailsComponent,
+        PagamentoLocalUpdateComponent,
+        B1ConflittoComponent,
+        B1ConflittoDetailsComponent,
+        B2IncompatibilitaComponent,
+        B2IncompatibilitaDetailsComponent,
+        B3RappStudioUnivComponent,
+        B3RappStudioUnivDetailsComponent,
+        ListaInsegnQueryComponent,
+        ListaPrecontrQueryComponent,
+        ListaContrugovQueryComponent,
+        B4RappPaComponent,
+        B4RappPaDetailsComponent,
+        B5StatoPensionComponent,
+        B5StatoPensionDetailsComponent,
+        B6PrivacyComponent,
+        B6PrivacyDetailsComponent,
+        CPrestazProfessDetailsComponent,
+        CPrestazProfessComponent,
+        D1InpsComponent,
+        D1InpsDetailsComponent,
+        QuadroRiepilogativoComponent,
+        EOccasionaleComponent,
+        EOccasionaleDetailsComponent,
+        D2InailComponent,
+        D2InailDetailsComponent,
+        D3TributariDetailsComponent,
+        D3TributariComponent,
+        D4FiscaliComponent,
+        D4FiscaliDetailsComponent,
+        BarraComandiComponent,
+        D5FiscaliesteroDetailsComponent,
+        D5FiscaliesteroComponent,
+        D6DetrazionifamiliariComponent,
+        D6DetrazionifamiliariDetailsComponent,
+        TerminaButtonComponent,
+        StoryProcessComponent,
+        SommarioComponent,
+        ProceduraComponent,
+        ProseguiButtonComponent,
+        LinkEsterniComponent,
+        EmailListComponent,
+        IntestazioneComponent,
+        SalvaAnnullaButtonComponent,
+        MappingUfficiTitulus,
+        MappingUfficioTitulus,
+        LogAttivitaComponent,
+        WrapperNotificheComponent,
+    ],
+    imports: [
+        SharedModule.forRoot(),
+        NgxLoadingModule.forRoot({}),
+        NgxPermissionsModule.forRoot(),
+        CommonModule,
+        NgbModule,
+        NgbTooltipModule,
+        FormsModule,
+        ReactiveFormsModule,
+        NgxDatatableModule,
+        RouterModule,
+        PerfectScrollbarModule,
+        NgSelectModule,
+        BrowserModule,
+        FormsModule,
+        HttpClientModule,
+        ReactiveFormsModule,
+        SharedModule,
+        RoutingModuleModule,
+        CoreModule,
+        NgxPermissionsModule.forRoot(),
+        PerfectScrollbarModule,
+        ToastrModule.forRoot(),
+        StorageServiceModule,
+        PdfViewerModule,
+        FormlyModule.forRoot({
+          extras: {
+            checkExpressionOn: 'changeDetectionCheck',
+            resetFieldOnHide: false,
+            lazyRender: true
+          },
+          types: [
+            {
+              name: 'formly-group',
+              defaultOptions: {
+                defaultValue: {}
+              }
+            },
+            {
+              name: 'repeattable',
+              defaultOptions: {
+                defaultValue: []
+              }
+            },
+            {
+              name: 'repeatviewtable',
+              defaultOptions: {
+                defaultValue: []
+              }
+            },
+            {
+              name: 'repeat',
+              defaultOptions: {
+                defaultValue: []
+              }
+            },
+          ],
+    
+        }),
+        JwtModule.forRoot({
+          config: {
+            tokenGetter: tokenGetter,
+            allowedDomains: environment.whitelistedDomains, //PER Bearer 
+            disallowedRoutes: environment.blacklistedRoutes,
+          }
+        }),
+        TranslateModule.forRoot({
+          missingTranslationHandler: { provide: MissingTranslationHandler, useClass: MyMissingTranslationHandler },
+          loader: {
+            provide: TranslateLoader,
+            useFactory: HttpLoaderFactory,
+            deps: [HttpClient],
+          },
+        }),
+    ],
+    exports: [
+        HomeComponent,
+        UserComponent,
+        UsersComponent,
+        RoleComponent,
+        RolesComponent,
+        PermissionComponent,
+        PermissionsComponent,
+        MappingRuolo,
+        MappingRuoli,
+        LogAttivitaComponent,
+    ],
+    providers: [
+        AuthService,
+        NgbActiveModal,
+        AuthGuard,
+        LoginActivate,
+        InsegnamentoService,
+        InsegnUgovService,
+        ContrUgovService,
+        P2rapportoService,
+        PrecontrattualeService,
+        PrecontrattualeDocenteService,
+        ValidazioneService,
+        SummaryService,
+        AnagraficaService,
+        PagamentoService,
+        DocenteService,
+        RuoloDocenteService,
+        AnagraficaLocalService,
+        B1ConflittoService,
+        B2IncompatibilitaService,
+        B3RappStudioUnivService,
+        B3JoinRapportoService,
+        B4RappPAService,
+        B5StatoPensionamentoService,
+        B6InformativaService,
+        CPrestazProfessService,
+        D1InpsService,
+        D2InailService,
+        D3TributariService,
+        D4FiscaliService,
+        D5FiscaliEsteroService,
+        D6DetrazioniFamiliariService,
+        EOccasionaleService,
+        StoryProcessService,
+        EmailListService,
+        ConfirmationDialogService,
+        // ApplicationService,
+        UserService,
+        MessageService,
+        MessageCacheService,
+        RoleService,
+        PermissionService,
+        LogAttivitaService,
+        HttpInterceptorProviders,
+        GlobalErrorHandlerProviders,
+        { provide: PERFECT_SCROLLBAR_CONFIG, useValue: DEFAULT_PERFECT_SCROLLBAR_CONFIG },
+        { provide: RequestCache, useClass: RequestCacheWithMap },
+        // { provide: 'InsegnamentoService', useClass: InsegnamentoService },
+        { provide: 'userService', useClass: UserService },
+        { provide: 'unitaorganizzativaService', useClass: UnitaOrganizzativaService },
+        { provide: 'roleService', useClass: RoleService },
+        { provide: 'precontrattualeService', useClass: PrecontrattualeService },
+        { provide: LOCALE_ID, useValue: 'it' },
+        // { provide: 'applicationService', useClass: ApplicationService },
+        // { provide: NgbDateAdapter, useClass: NgbStringAdapter },
+        // { provide: NgbDateParserFormatter, useClass: NgbDateCustomParserFormatter },
+        { provide: APP_BASE_HREF, useValue: environment.baseHref },
+        PersonaInternaService,
+        StrutturaInternaService,
+        StrutturaEsternaService,
+        DocumentoService,
+        MappingRuoloService,
+        MappingUfficioService,
+        SettingsService,
+        SessionStorageService,
+        { provide: 'personainternaService', useClass: PersonaInternaService },
+        { provide: 'strutturainternaService', useClass: StrutturaInternaService },
+        { provide: 'strutturaesternaService', useClass: StrutturaEsternaService },
+        { provide: 'mappingufficititulusService', useClass: MappingUfficioService },
+        { provide: 'documentoService', useClass: DocumentoService },
+        { provide: 'mappingruoloService', useClass: MappingRuoloService },
+        { provide: NgbDateAdapter, useClass: NgbStringAdapter },
+        { provide: NgbDateParserFormatter, useClass: NgbDateCustomParserFormatter },
+        {
+            provide: APP_INITIALIZER,
+            useFactory: appInitializerFactory,
+            deps: [TranslateService, Injector],
+            multi: true
+        },
+        InsegnamTools,
+        RouteMetods,
+        DatePipe,
+        BreadcrumbService,
+    ],
+    schemas: [CUSTOM_ELEMENTS_SCHEMA],
+    bootstrap: [
+        AppComponent
+    ]
 })
 export class AppModule {
   constructor(router: Router) {
+
+    window['initAsync'] = function () {
+      console.log('app initSDK');
+      // PLACE HERE CONFIGURATION CODE (eg. API keys, tokens, etc..)
+      var BASE_URL = AppConstants.baseApiURL; //'https://uniurb.webfirma.cineca.it/my-web-firma' ;
+      var API_URL = "/sdk/";
+      var OTP_API_URL = '/firma/sendOtp/'; //"http://localhost:8080/firma/sendOtp/";
+      var OTP_API_FEA_URL = '/firma/sendFilesToFEA/'; //"http://localhost:8080/firma/sendOtp/";
+      var OTP_API_ARUBA_URL = '/firma/sendArubaOtp';
+      var SIGN_API_URL = '/firma/signProcess/'; //"http://localhost:8080/firma/signProcess/";
+      var CERT_OTP_URL = '/firma/certificato/otpType/';
+
+      window['SDK'].init(
+        {
+          'BASE_URL': BASE_URL,
+          'API_URL': BASE_URL + API_URL,
+          'OTP_API_URL': BASE_URL + OTP_API_URL,
+          'OTP_API_FEA_URL': BASE_URL + OTP_API_FEA_URL,
+          'OTP_API_ARUBA_URL': BASE_URL + OTP_API_ARUBA_URL,
+          'SIGN_API_URL': BASE_URL + SIGN_API_URL,
+          'CERT_OTP_URL': BASE_URL + CERT_OTP_URL,
+          'FORM_URL': AppConstants.baseURL+'otp/sdk/',
+          'language': 'IT',
+          useIFrame: false,
+          apiToken: ""//"0123456790abcdefghijklmnopqrstuvxwz"
+        }
+      );
+    };
 
   }
  }

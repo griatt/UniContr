@@ -1,5 +1,5 @@
 import { Component, Injectable, Input, Output, OnInit, OnDestroy, EventEmitter, ViewChild, TemplateRef } from '@angular/core';
-import { NgxDatatableModule, DatatableComponent } from '@swimlane/ngx-datatable';
+import { DatatableComponent } from '@swimlane/ngx-datatable';
 import { TableColumn } from '@swimlane/ngx-datatable';
 
 import { Observable } from 'rxjs';
@@ -7,7 +7,7 @@ import { BehaviorSubject } from 'rxjs';
 
 import { GridModel } from './grid-model'
 import { ControlBase } from './control-base';
-import { FormArray, FormGroup } from '@angular/forms';
+import { UntypedFormArray, UntypedFormGroup } from '@angular/forms';
 import ControlUtils from './control-utils';
 
 @Injectable()
@@ -17,20 +17,20 @@ import ControlUtils from './control-utils';
 })
 export class DynamicTableComponent<T> implements OnInit, OnDestroy {
     
-    @ViewChild('textcolumn') public textcolumn: TemplateRef<any>;
-    @ViewChild('datecolumn') public datecolumn: TemplateRef<any>;
+    @ViewChild('textcolumn', { static: true }) public textcolumn: TemplateRef<any>;
+    @ViewChild('datecolumn', { static: true }) public datecolumn: TemplateRef<any>;
     
-    @ViewChild(DatatableComponent) table: DatatableComponent;
+    @ViewChild(DatatableComponent, { static: true }) table: DatatableComponent;
 
     @Input() metadata: ControlBase<any>[];        
     
 
-    _controls: FormArray
+    _controls: UntypedFormArray
     @Input()
-    set controls(controls: FormArray){
+    set controls(controls: UntypedFormArray){
         this._controls = controls;
     };    
-    get controls():FormArray{
+    get controls():UntypedFormArray{
         return this._controls;
     }
     
@@ -45,7 +45,7 @@ export class DynamicTableComponent<T> implements OnInit, OnDestroy {
     }
     
     //la form contenitore
-    @Input() form: FormGroup;
+    @Input() form: UntypedFormGroup;
     
     @Input() columnMode: any = "force";    
     @Input() rowHeight: any = "auto" ;    

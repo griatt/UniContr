@@ -8,6 +8,9 @@ import { Router, ActivatedRoute } from '@angular/router';
 import { TranslateService } from '@ngx-translate/core';
 import { MyTranslatePipe } from 'src/app/shared/pipe/custom.translatepipe';
 import { annoAccademicoCorrente } from 'src/app/shared/dynamic-form/utils';
+import { encode, decode } from 'base64-arraybuffer';
+import * as saveAs from 'file-saver';
+import { PrecontrattualeDocenteService } from 'src/app/services/precontrattualedocente.service';
 
 @Component({
   selector: 'app-lista-precontr-query',
@@ -25,7 +28,7 @@ export class ListaPrecontrQueryComponent extends BaseResearchComponent {
       templateOptions: {
         label: 'Codice',        
       }
-    },
+    },    
     {
       key: 'insegnamento.aa',
       type: 'select',
@@ -33,14 +36,7 @@ export class ListaPrecontrQueryComponent extends BaseResearchComponent {
         label: 'Anno',
         valueProp: 'value',
         labelProp: 'label',
-        options: [
-          {value: '2016', label: '2016 / 2017'},
-          {value: '2017', label: '2017 / 2018'},
-          {value: '2018', label: '2018 / 2019'},
-          {value: '2019', label: '2019 / 2020'},
-          {value: '2020', label: '2020 / 2021'},
-          {value: '2021', label: '2021 / 2022'},
-        ]
+        options: this.service.getAnniAccademici()
       }
     },
     {
@@ -66,13 +62,13 @@ export class ListaPrecontrQueryComponent extends BaseResearchComponent {
       templateOptions: {
         label: 'Dipartimento',
         options: [
-          { key: '005019', value: this.translateService.instant('005019_disb') },
-          { key: '004919', value: this.translateService.instant('004919_dispea')},
-          { key: '004419', value: this.translateService.instant('004419_digiur') },
-          { key: '004940', value: this.translateService.instant('004940_discui') },
-          { key: '005579', value: this.translateService.instant('005579_discui') },
-          { key: '004939', value: this.translateService.instant('004939_distum') },
-          { key: '004424', value: this.translateService.instant('004424_desp') }
+          { value: '005019', label: this.translateService.instant('005019_disb') },
+          { value: '004919', label: this.translateService.instant('004919_dispea')},
+          { value: '004419', label: this.translateService.instant('004419_digiur') },
+          { value: '004940', label: this.translateService.instant('004940_discui') },
+          { value: '005579', label: this.translateService.instant('005579_discui') },
+          { value: '004939', label: this.translateService.instant('004939_distum') },
+          { value: '004424', label: this.translateService.instant('004424_desp') }
         ]
       }
     },
@@ -109,13 +105,22 @@ export class ListaPrecontrQueryComponent extends BaseResearchComponent {
       templateOptions: {
         label: 'Tipo contratto',
         options: [
-          { key: 'ALTAQUALIFICAZIONE', value: 'Contratto di Alta Qualificazione' },
-          { key: 'DIDATTICAUFFICIALE', value: 'Contratto di Didattica Ufficiale'},
-          { key: 'DIDATTICAINTEGRATIVA', value:'Contratto di Didattica Integrativa'},
-          { key: 'SUPPORTO', value: 'Contratto di Supporto alla Didattica' },
+          { value: 'ALTAQUALIFICAZIONE',  label: 'Contratto di Alta Qualificazione' },
+          { value: 'DIDATTICAUFFICIALE',  label: 'Contratto di Didattica Ufficiale'},
+          { value: 'DIDATTICAINTEGRATIVA',label:'Contratto di Didattica Integrativa'},
+          { value: 'SUPPORTO',            label: 'Contratto di Supporto alla Didattica' },
         ],
         required: true,
         column: { cellTemplate: 'valuecolumn'}
+      }
+    },
+    {
+      key: 'insegnamento.compenso',
+      type: 'number',
+      templateOptions: {
+        type: 'number',
+        label: 'Compenso',
+        required: true,        
       }
     },
     {
@@ -124,11 +129,11 @@ export class ListaPrecontrQueryComponent extends BaseResearchComponent {
       templateOptions: {
         label: 'Natura del rapporto',
         options: [
-          { key: 'PRPR', value: this.translateService.instant('p3_radio1') },
-          { key: 'COCOCO', value: this.translateService.instant('p3_radio2')},
-          { key: 'PLAO', value: this.translateService.instant('p3_radio3') },
-          { key: 'PTG', value: this.translateService.instant('p3_radio4') },
-          { key: 'ALD', value: this.translateService.instant('p3_radio5') }
+          { value: 'PRPR',    label: this.translateService.instant('p3_radio1') },
+          { value: 'COCOCO',  label: this.translateService.instant('p3_radio2')},
+          { value: 'PLAO',    label: this.translateService.instant('p3_radio3') },
+          { value: 'PTG',     label: this.translateService.instant('p3_radio4') },
+          { value: 'ALD',     label: this.translateService.instant('p3_radio5') }
         ],
         required: true,
         column: { cellTemplate: 'valuecolumn'}
@@ -140,8 +145,8 @@ export class ListaPrecontrQueryComponent extends BaseResearchComponent {
       templateOptions: {
         label: 'Rinuncia al compenso',
         options: [
-          { key: true, value: this.translateService.instant('txt_si') },
-          { key: false, value: this.translateService.instant('txt_no')},
+          { value: true,  label: this.translateService.instant('txt_si') },
+          { value: false, label: this.translateService.instant('txt_no')},
         ],
         required: true,
         column: { cellTemplate: 'valuecolumn'}
@@ -157,19 +162,59 @@ export class ListaPrecontrQueryComponent extends BaseResearchComponent {
       }
     },
     {
+      key: 'user.cognome',
+      type: 'string',
+      templateOptions: {
+        label: 'Cognome docente',
+        required: true,
+        column: { cellTemplate: 'valuecolumn'}
+      }
+    },
+    {
+      key: 'user.nome',
+      type: 'string',
+      templateOptions: {
+        label: 'Nome docente',
+        required: true,
+        column: { cellTemplate: 'valuecolumn'}
+      }
+    },
+    {
+      key: 'user.cf',
+      type: 'string',
+      templateOptions: {
+        label: 'Codice fiscale docente',
+        required: true,
+        column: { cellTemplate: 'valuecolumn'}
+      }
+    },
+    {
       key: 'currentState',
       type: 'select',
       templateOptions: {
         label: 'Stato corrente',
         required: true,
         options: [
-          {key: 'aperta', value: 'Aperta in fase di compilazione'},
-          {key: 'compilata', value: 'Compilata in attesa validazione Ufficio Amm.ne e Reclutamento'},
-          {key: 'validazione1', value: 'Validata in attesa validazione Ufficio Trattamenti Economici e Previdenziali'},
-          {key: 'validazione2', value: 'Validata in attesa accettazione e presa visione'},
-          {key: 'accettata', value: 'Accettata in attesa di firma'},
-          {key: 'firmata', value: 'Firmata'},
-          {key: 'annullata', value: 'Annullata'},
+          {value: 'aperta',       label: 'Aperta in fase di compilazione'},
+          {value: 'compilata',    label: 'Compilata in attesa validazione Ufficio Amm.ne e Reclutamento'},
+          {value: 'validazione1', label: 'Validata in attesa validazione Ufficio Trattamenti Economici e Previdenziali'},
+          {value: 'validazione2', label: 'Validata in attesa accettazione e presa visione'},
+          {value: 'accettata',    label: 'Accettata in attesa di firma'},
+          {value: 'firmata',      label: 'Firmata'},
+          {value: 'annullata',    label: 'Annullata'},
+        ]
+      }
+    },
+    {
+      key: 'validazioni.tipo_accettazione',
+      type: 'select',
+      templateOptions: {
+        label: 'Tipo accettazione',
+        required: true,
+        options: [
+          {value: 'PRESA_VISIONE',  label: 'Presa visione'},
+          {value: 'USIGN',          label: 'U-Sign'},
+          {value: 'FIRMAIO',        label: 'Firma con IO'},
         ]
       }
     },
@@ -304,9 +349,9 @@ export class ListaPrecontrQueryComponent extends BaseResearchComponent {
   }
 
   resultMetadata: FormlyFieldConfig[];
-  @ViewChild('tooltip') tooltipCellTemplate: TemplateRef<any>;
+  @ViewChild('tooltip', { static: true }) tooltipCellTemplate: TemplateRef<any>;
 
-  constructor(protected service: PrecontrattualeService, router: Router, route: ActivatedRoute, private translateService: TranslateService) {
+  constructor(protected service: PrecontrattualeService, protected serviceDocente: PrecontrattualeDocenteService, router: Router, route: ActivatedRoute, private translateService: TranslateService) {
     super(router, route);
     this.enableNew = false;
     // percorso usato per apertura doppio click
@@ -315,12 +360,21 @@ export class ListaPrecontrQueryComponent extends BaseResearchComponent {
     this.translate = new MyTranslatePipe(translateService);
     this.prefix = 'precontr';
 
+    
+    this.route.data.subscribe(data => {
+      if (data.service === 'precontrattualedocente') {
+        this.service = this.serviceDocente as any;
+        this.prefix = 'precontrdocente';
+      } 
+    });
+
     this.initRule();
     
     if (this.rules == null){
       const year = annoAccademicoCorrente();
       this.rules = [{field: "insegnamento.aa", operator: "=", value: year}];
     }
+
    }
 
   // tslint:disable-next-line:use-life-cycle-interface
@@ -352,17 +406,21 @@ export class ListaPrecontrQueryComponent extends BaseResearchComponent {
         onDblclickRow: (event) => this.onDblclickRow(event),
         onSetPage: (pageInfo) => this.onSetPageWithInit(pageInfo),
         columns: [
-          { name: '', prop: 'insegn_id',  with: 65, maxWidth: 65, cellTemplate: this.apri },
+          { name: '', prop: 'insegn_id',  with: 100, maxWidth: 100, cellTemplate: this.comandi, sortable: false },
           { name: '#', prop: 'id', width: 80, maxWidth: 100 },
           { name: 'Copertura', prop: 'insegnamento.coper_id', width: 100, maxWidth: 100 },
           { name: 'Dipartimento', prop: 'insegnamento.dip_cod', cellTemplate: this.tooltipCellTemplate, width: 100, maxWidth: 150 },
+          { name: 'Anno', prop: 'insegnamento.aa', width: 100, maxWidth: 150, pipe: this.translate },
           { name: 'Inizio', prop: 'insegnamento.data_ini_contr', width: 100, maxWidth: 150, type: 'date' },
           { name: 'Fine', prop: 'insegnamento.data_fine_contr', width: 100, maxWidth: 150, type: 'date' },
           { name: 'Cognome', prop: 'user.cognome', width: 150, maxWidth: 150 },
           { name: 'Nome', prop: 'user.nome', width: 150, maxWidth: 150 },
-          { name: 'Insegnamento', prop: 'insegnamento.insegnamento', width: 450 },
-          { name: 'Rapporto', prop: 'p2naturarapporto.natura_rapporto', pipe: this.translate, width: 100, maxWidth: 150 },
+          { name: 'Motivo Atto', prop: 'insegnamento.motivo_atto', wrapper: 'value', pipe: this.translate, minWidth: 100, maxWidth: 150},
+          { name: 'Insegnamento', prop: 'insegnamento.insegnamento', width: 450 },    
+          { name: 'Codice insegnamento', prop: 'insegnamento.cod_insegnamento', width: 200 },          
+          { name: 'Rapporto', prop: 'p2naturarapporto.natura_rapporto', pipe: this.translate, width: 200, maxWidth: 350 },
           { name: 'Stato corrente', prop: 'currentState', minWidth: 100 },
+          { name: 'Tipo accettazione', prop: 'validazioni.tipo_accettazione', minWidth: 100 },
         ]
       },
       fieldArray: {
@@ -370,7 +428,7 @@ export class ListaPrecontrQueryComponent extends BaseResearchComponent {
       }
     },
     // {
-    //   template: "<div>Usa il tasto <span class='oi oi-external-link ml-1 mr-1'></span> oppure doppio click sulla riga per accedere alla precontrattuale</div>",
+    //   template: "<div>Usa il tasto <span class='oi oi-external-link ms-1 me-1'></span> oppure doppio click sulla riga per accedere alla precontrattuale</div>",
     //   hideExpression: (model, formstate) => {
     //     if (model.data){
     //       if (model.data.length > 0)
@@ -387,6 +445,32 @@ export class ListaPrecontrQueryComponent extends BaseResearchComponent {
     }
 
   }
+
+  downloadDisabled(row){
+    if (row.stato == 1){
+      return false;
+    }
+    return true;
+  }
+
+  downloadSelection(row){
+    if (row.stato==1) {
+      this.isLoading = true;
+      this.service.downloadContrattoFirmato(row.id).subscribe(file => {
+        this.isLoading = false;
+        if (file.filevalue) {
+          const blob = new Blob([decode(file.filevalue)]);
+          saveAs(blob, file.filename);
+        }
+      },
+        e => { 
+          this.isLoading = false;
+          console.log(e); 
+        }
+      );
+    }
+  }
+
 
 
 }

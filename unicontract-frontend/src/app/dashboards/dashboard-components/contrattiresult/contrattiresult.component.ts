@@ -1,6 +1,6 @@
 import { Component, OnInit, ViewChild, TemplateRef, Input } from '@angular/core';
 import { FormlyFieldConfig } from '@ngx-formly/core';
-import { FormGroup } from '@angular/forms';
+import { UntypedFormGroup } from '@angular/forms';
 import { Page } from 'src/app/shared/lookup/page';
 import { Router } from '@angular/router';
 import { DatePipe, TitleCasePipe } from '@angular/common';
@@ -18,13 +18,13 @@ export class ConvenzioniresultComponent implements OnInit {
   isLoading: boolean = false;
 
   //@ViewChild('detailRow') detailRow: TemplateRef<any>;
-  @ViewChild('converter') converter: TemplateRef<any>;  
-  @ViewChild('tooltip') tooltipCellTemplate: TemplateRef<any>;
+  @ViewChild('converter', { static: true }) converter: TemplateRef<any>;  
+  @ViewChild('tooltip', { static: true }) tooltipCellTemplate: TemplateRef<any>;
 
   @Input() querymodel: any;
   @Input() postname = null;
 
-  form = new FormGroup({});
+  form = new UntypedFormGroup({});
   model = {
     data: new Array<any>(),
   };

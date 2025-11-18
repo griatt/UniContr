@@ -7,9 +7,10 @@ import { Precontrattuale } from './../../../classes/precontrattuale';
 import { PrecontrattualeService } from './../../../services/precontrattuale.service';
 import { Upda2 } from './../../../classes/precontrattuale';
 import { FormlyFormOptions, FormlyFieldConfig } from '@ngx-formly/core';
-import { FormGroup } from '@angular/forms';
+import { UntypedFormGroup } from '@angular/forms';
 import { TranslateService } from '@ngx-translate/core';
 import { A2ModPagamento } from 'src/app/interface/pagamento';
+import ControlUtils from 'src/app/shared/dynamic-form/control-utils';
 
 @Component({
   selector: 'app-pagamento-details',
@@ -18,6 +19,41 @@ import { A2ModPagamento } from 'src/app/interface/pagamento';
 })
 export class PagamentoDetailsComponent extends BaseComponent {
 
+  static informazioni_pagamento = (translateService: TranslateService):FormlyFieldConfig => {
+    // Delibera n. 318/2022 del Consiglio di Amministrazione del 28/10/2022 dati relativi al soluzioni di pagamento 
+    return {
+      wrappers: ['riquadro'],
+      hideExpression:  (model: any, formState: any) => {
+        //email Ufficio Trattamenti Economici e Previdenziali 17/11 
+        return !(formState.precontr && ['COCOCO'].includes(formState.precontr.p2naturarapporto.natura_rapporto) && formState.precontr.insegnamento.compenso > 3000 && formState.precontr.insegnamento.aa >= 2022)
+      },
+      templateOptions: {
+        title: translateService.instant('a2_title3')
+      },
+      fieldGroup: [
+        {
+          fieldGroupClassName: 'row',
+          fieldGroup: [
+            {
+              key: 'soluzione_pagamento',
+              type: 'select',              
+              className: 'col-md-6',                            
+              templateOptions: {
+                label: 'Soluzione di pagamento',
+                options: [
+                  { value:'una_rata', label: 'Unica rata' },
+                  { value:'due_rate', label: 'Due rate' }
+                ],    
+                description: 'Delibera n. 318/2022 del Consiglio di Amministrazione del 28/10/2022',            
+                required: true,
+              }
+            }
+          ],
+        },        
+      ]
+    }
+  }
+
   originalValue: any; //in caso di nuovo
 
   pagamento: A2ModPagamento;
@@ -25,7 +61,7 @@ export class PagamentoDetailsComponent extends BaseComponent {
   modality = 'ACIC';
   idins: number;
 
-  model: any;
+  model: any = null;
 
   options: FormlyFormOptions = {
     formState: {
@@ -33,7 +69,7 @@ export class PagamentoDetailsComponent extends BaseComponent {
       isLoading: this.isLoading,
     },
   };
-  form = new FormGroup({});
+  form = new UntypedFormGroup({});
 
   fields: FormlyFieldConfig[] = [
     // scelta modalità di pagamento
@@ -56,8 +92,8 @@ export class PagamentoDetailsComponent extends BaseComponent {
           expressionProperties: {
             'templateOptions.options': (model: any, formState: any, field: FormlyFieldConfig) => {
               return [
-                { key: 'ACIC', value: this.translateService.instant('a2_check2') },
-                { key: 'AGBM', value: this.translateService.instant('a2_check1') },
+                { value: 'ACIC', label: this.translateService.instant('a2_check2') },
+                { value: 'AGBM', label: this.translateService.instant('a2_check1') },
               ];
             },
             'templateOptions.description': (model: any, formState: any, field: FormlyFieldConfig) => {
@@ -120,7 +156,7 @@ export class PagamentoDetailsComponent extends BaseComponent {
               },
             },
           }],
-        },
+        },      
         // denominazione banca indirizzo agenzia
         {
           fieldGroupClassName: 'row',
@@ -181,7 +217,8 @@ export class PagamentoDetailsComponent extends BaseComponent {
           ]
         },
       ]
-    }
+    },
+    PagamentoDetailsComponent.informazioni_pagamento(this.translateService)
   ];
 
   constructor(private route: ActivatedRoute,
@@ -198,7 +235,7 @@ export class PagamentoDetailsComponent extends BaseComponent {
       (params) => {
         this.update = false;
         this.isLoading = true;
-        this.pagamentoService.getPagamento(params.get('id_ab')).subscribe(
+        this.pagamentoService.getPagamento(params.get('id_ab'), params.get('idins')).subscribe(
           response => {
 
             if (response['dati']) {
@@ -209,11 +246,17 @@ export class PagamentoDetailsComponent extends BaseComponent {
               if (copy) {
                 Object.keys(copy).forEach(key => this.pagamento[key] = copy[key]);
                 this.originalValue = JSON.parse(JSON.stringify(response['dati']['copy']));
+                //mostra gli errori
+                this.fields.forEach(f => ControlUtils.validate(f));                                 
               } else {
                 this.pagamento.denominazione = response['dati'].descr;
                 this.pagamento.intestazione = response['dati'].intest_conto;
                 this.pagamento.tipologia_conto_corrente = response['dati'].tipo_pag;
                 this.originalValue = JSON.parse(JSON.stringify(this.pagamento));
+              }
+
+              if (response['dati']['precontr']){
+                this.options.formState.precontr = response['dati']['precontr'];
               }
 
             } else {

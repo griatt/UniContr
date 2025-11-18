@@ -25,13 +25,13 @@
     </app-list-item>
    
     <app-list-item label="{{ 'a1_res' | translate }}">
-      {{ item.comune_residenza | uppercase }} ({{ item.provincia_residenza | uppercase}}) - CAP {{ item.cap_residenza }} - {{ item.indirizzo_residenza | uppercase }}, {{ item.civico_residenza }}
+      {{ item.comune_residenza }} ({{ item.provincia_residenza | uppercase}}) - CAP {{ item.cap_residenza }} - {{ item.indirizzo_residenza }}, {{ item.civico_residenza }}
     </app-list-item>
     
     <app-list-item *ngIf="item.data_variazione_residenza" label="{{ 'a1_dvr' | translate }}" value="{{ item.data_variazione_residenza }}"> </app-list-item>  
    
     <app-list-item *ngIf="item.comune_fiscale && item.provincia_fiscale" label="{{ 'a1_df' | translate }}" >
-      {{ item.comune_fiscale | uppercase }} ({{ item.provincia_fiscale | uppercase}}) - CAP {{ item.cap_fiscale }} - {{ item.indirizzo_fiscale | uppercase }}, {{ item.civico_fiscale }}
+      {{ item.comune_fiscale }} ({{ item.provincia_fiscale | uppercase}}) - CAP {{ item.cap_fiscale }} - {{ item.indirizzo_fiscale }}, {{ item.civico_fiscale }}
     </app-list-item>
     
     <app-list-item *ngIf="item.data_variazione_dom_fiscale" label="{{ 'a1_dvf' | translate }}" value="{{ item.data_variazione_dom_fiscale }}"> </app-list-item>
@@ -54,7 +54,7 @@
     <h5>{{ 'a1_title8' | translate }}</h5>
     <div class="row" *ngIf="item.flag_lavoratrici_madri != null &&  item.flag_lavoratrici_madri === 1">
       <div class="col-md-auto">
-        <span class="oi oi-check iconic pl-1"></span>
+        <span class="oi oi-check iconic ps-1"></span>
       </div>
       <div class="col">
         {{ 'a1_label24' | translate }}, disponibili presso <a href="https://www.uniurb.it/ateneo/utilita/salute-e-sicurezza/informazione-ai-lavoratori" target="_blank">https://www.uniurb.it/ateneo/utilita/salute-e-sicurezza/informazione-ai-lavoratori</a>
@@ -85,7 +85,7 @@
     </table>  
   </app-riquadro-wrapper>
 
-  <div class="form-footer text-right">  
+  <div class="form-footer text-end">  
     <app-barra-comandi *ngIf="item" [item]="item" [type]="'A1'"></app-barra-comandi>    
          
     <app-termina-button [item]="item" *ngIf="item.validazioni.flag_submit === 0 && tools.termina(item) === true" (update)="isLoadingChange($event)"></app-termina-button>

@@ -1,8 +1,7 @@
 import { Inject, Injectable } from '@angular/core';
 import { LOCAL_STORAGE, StorageService } from 'ngx-webstorage-service';
-import { Observable, BehaviorSubject } from 'rxjs';
+import { Observable, BehaviorSubject, throwError } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
-import { nullSafeIsEquivalent } from '@angular/compiler/src/output/output_ast';
 import { HttpClient, HttpHeaders, HttpResponse } from '@angular/common/http';
 import { JwtHelperService } from '@auth0/angular-jwt';
 import { Router } from '@angular/router';
@@ -48,7 +47,7 @@ export class AuthService {
     }
 
     login() {
-        return this.http.get(`${this.authUrl}/loginSaml`, httpOptions)
+        return this.http.get(`${this.authUrl}loginSaml`, httpOptions)
         .subscribe(res => {
             console.log(res);
         });
@@ -60,8 +59,30 @@ export class AuthService {
         this.reload();
     }
 
+    cambiaUtente(id){
+        return this.http.post<any>(`${this.authUrl}api/auth/cambiautente`, {id: id}, httpOptions).pipe(tap((data) => {
+            if (data.success){
+                localStorage.removeItem(AuthService.TOKEN);
+                localStorage.clear();
+                sessionStorage.clear();
+                this.permissionsService.flushPermissions();
+                this.resetFields();
+                this.loggedIn.next(false);
+                
+                this.loginWithToken(data.token);
+            }else{
+                //messaggio     
+                console.log(data.message);           
+            }
+            
+          })).subscribe(res => {            
+            console.log(res);
+        });
+    }
+
+
     refreshToken() {
-        return this.http.post<any>(`${this.authUrl}/api/auth/refreshtoken`, {
+        return this.http.post<any>(`${this.authUrl}api/auth/refreshtoken`, {
           'refreshToken': this.getToken()
         }).pipe(tap((data) => {
           this.storeJwtToken(data.token);
@@ -84,7 +105,14 @@ export class AuthService {
         }
     }
 
-    redirectFirstLogin(){
+    redirectFirstLogin(redirect){
+
+        if (redirect && redirect != 'home' && redirect != '/home' && redirect != ''){
+            console.log(redirect);
+            this.router.navigateByUrl(redirect);       
+            return;                         
+        }
+
 
         const permissions = this.permissionsService.getPermissions();
         if (permissions['OP_APPROVAZIONE_AMM']){
@@ -97,6 +125,8 @@ export class AuthService {
             this.router.navigate(['home/lineeguida/precontreditabile']);
         }else if (permissions['VIEWER']){
             this.router.navigate(['home']);
+        }else if (permissions['OP_DOCENTE']){
+            this.router.navigate(['home/lista-doc-precontr-query']);
         }else{
             this.router.navigate(['home/lista-precontr-query']);
         }
@@ -177,6 +207,6 @@ export class AuthService {
         //   errMessage = err.message ? err.message : err.toString();
         // }
 
-        return Observable.throw(errMessage);
+        return throwError(errMessage);
     }
 }

@@ -58,7 +58,8 @@ export class BarraComandiComponent implements OnInit {
 
   @Output() sendEmail = new EventEmitter();
   @Output() updateInsegnamento: EventEmitter<number> = new EventEmitter();
-
+  @Output() changeCopertura: EventEmitter<number> = new EventEmitter();
+  
   constructor(private route: ActivatedRoute,
     private router: Router,  public goto: RouteMetods) { }
 
@@ -78,9 +79,9 @@ export class BarraComandiComponent implements OnInit {
 
   getClassName(type) {
     if (this.type === type) {
-      return 'btn btn-success rounded mr-1';
+      return 'btn btn-success rounded me-1';
     }
-    return 'btn btn-outline-secondary rounded mr-1';
+    return 'btn btn-outline-secondary rounded me-1';
   }
   
 

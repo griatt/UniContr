@@ -1,9 +1,8 @@
-import { Injectable, Injector } from '@angular/core';
+import { Injectable, Injector, isDevMode } from '@angular/core';
 import { HttpEvent, HttpInterceptor, HttpHandler, HttpRequest, HttpResponse, HttpErrorResponse } from '@angular/common/http';
 import { Observable, BehaviorSubject } from 'rxjs';
 import { tap, catchError, switchMap, filter, take, flatMap } from 'rxjs/operators';
 import { AuthService } from './auth.service';
-import { error } from 'util';
 import { AppConstants } from '../app-constants';
 import { Router } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
@@ -25,12 +24,18 @@ export class TokenInterceptor implements HttpInterceptor {
 
   intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
 
-    //    return next.handle(req);
+    const token = this.auth.getToken();
+    if (token != null) {
+      req = this.addToken(req, this.auth.getToken());
+    }
 
     return next.handle(req).pipe(
       tap((ev: HttpEvent<any>) => {
         if (ev instanceof HttpResponse) {
-          console.log('processing response', ev);
+          if (isDevMode()){
+            //console.log('processing response', JSON.parse(JSON.stringify(ev)));
+            console.log('processing response', ev);
+          }  
         }
       }),
       catchError(error => {
@@ -104,9 +109,10 @@ export class TokenInterceptor implements HttpInterceptor {
             console.log('refresh token');
             return next.handle(this.addToken(request, data.token));
           }),
-          catchError((err: any) => {
+          catchError((error: any) => {
             this.refreshTokenInProgress = false;
             console.log('error refresh token');
+            this.auth.logout();
             window.location.href = AppConstants.baseURL + '/loginSaml';
 
             return throwError(error);
@@ -124,7 +130,7 @@ export class TokenInterceptor implements HttpInterceptor {
 
     return request.clone({
       setHeaders: {
-        Authorization: `bearer ${token}`
+        Authorization: `Bearer ${token}`
       }
     });
   }

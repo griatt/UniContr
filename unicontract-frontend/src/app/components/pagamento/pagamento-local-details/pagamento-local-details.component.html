@@ -4,9 +4,9 @@
 
   <app-riquadro-wrapper>
     <h5>{{ 'a2_title1' | translate }}</h5>
-    <div class="row">
+    <div class="flex">
       <span style="padding: 3px 15px 0 15px;" class="oi oi-check iconic"></span>
-      <div>{{ paymentModality(item.modality) | uppercase }}</div>
+      <span>{{ paymentModality(item.modality) | uppercase }}</span>
     </div>
   </app-riquadro-wrapper>
 
@@ -21,7 +21,15 @@
     <app-list-item *ngIf="item.aba" label="{{ 'a2_label6' | translate }}" value="{{ item.aba | uppercase }}"> </app-list-item>
   </app-riquadro-wrapper>
 
-  <div class="form-footer text-right" >  
+  <ng-container *ngIf="item.precontr.p2naturarapporto.natura_rapporto == 'COCOCO' && item.precontr.insegnamento.compenso > 3000 && item.precontr.insegnamento.aa >= 2022">
+  <app-riquadro-wrapper >
+    <h5>{{ 'a2_title3' | translate }}</h5>
+    <app-list-item label="{{ 'Soluzione di pagamento' | translate }}" value="{{ item.soluzione_pagamento ? (item.soluzione_pagamento | translate) : 'DATO MANCANTE' }}"> </app-list-item>  
+  </app-riquadro-wrapper>
+  </ng-container>
+  
+
+  <div class="form-footer text-end" >  
     <app-barra-comandi *ngIf="item" [item]="item" [type]="'A2'"></app-barra-comandi>
     
     <app-termina-button [item]="item" *ngIf="item.validazioni.flag_submit === 0 && tools.termina(item) === true" (update)="isLoadingChange($event)"></app-termina-button>

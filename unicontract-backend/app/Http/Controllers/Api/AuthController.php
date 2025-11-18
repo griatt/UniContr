@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use JWTAuth;
+use App\User;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 
 class AuthController extends Controller
@@ -71,6 +72,31 @@ class AuthController extends Controller
         return response()->json(['message' => 'Logged out effettuato con successo']);
     }
 
+    public function cambiautente(Request $request)
+    {  
+        // if (!App::environment(['local','preprod'])) { 
+        //     $data = [];
+        //     $message = 'Operazione non eseguibile: operatore non abilitato';
+        //     $success = false;
+        //     return compact('data', 'message', 'success');   
+        // }
+
+        if (!Auth::user()->hasRole('super-admin')){
+            $data = [];
+            $message = 'Operazione non eseguibile: operatore non abilitato';
+            $success = false;
+            return compact('data', 'message', 'success');   
+        }
+
+        $user = User::find($request->id);
+        if ($user) {
+            $success=true;
+            Auth::login($user);
+            $token = JWTAuth::fromUser($user);
+            return response()->json(compact('token','success'));
+        }
+    }
+
     /**
      * Refresh a token.
      *
@@ -109,7 +135,7 @@ class AuthController extends Controller
     {
         return response()->json([
             'access_token' => $token,
-            'token_type' => 'bearer',
+            'token_type' => 'Bearer',
             'expires_in' => auth()->factory()->getTTL() * 60
         ]);
     }

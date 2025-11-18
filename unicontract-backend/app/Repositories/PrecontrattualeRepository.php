@@ -23,7 +23,10 @@ use Carbon\Carbon;
 use Hash;
 use App\Service\PrecontrattualeService;
 use App\Service\EmailService;
-
+use App\Http\Controllers\SoapControllerTitulus;
+use Artisaninweb\SoapWrapper\SoapWrapper;
+use App\Exceptions\Handler;
+use Illuminate\Container\Container;
 
 class PrecontrattualeRepository extends BaseRepository {
     /**
@@ -45,13 +48,32 @@ class PrecontrattualeRepository extends BaseRepository {
             $success = $insegn->save();        
 
             // PROFILO DOCENTE
-            $docente = Docente::where('v_ie_ru_personale_id_ab', $data['docente']['v_ie_ru_personale_id_ab'])->first();            
+            $docente = User::where('v_ie_ru_personale_id_ab', $data['docente']['v_ie_ru_personale_id_ab'])->first();            
             if (!$docente) {
                 $docente = new User();                    
                 $docente->fill($data['docente']);              
                 $docente->password =  Hash::make($data['docente']['cf']);
                 $success = $docente->save();
                 $docente->assignRole('op_docente');  
+            } else {
+                // Update 'nome' and 'cognome' if they are empty
+                $updates = [];
+            
+                if (empty($docente->nome) && !empty($data['docente']['nome'])) {
+                    $updates['nome'] = $data['docente']['nome'];
+                }
+            
+                if (empty($docente->cognome) && !empty($data['docente']['cognome'])) {
+                    $updates['cognome'] = $data['docente']['cognome'];
+                }
+            
+                if (!empty($updates)) {
+                    $docente->update($updates);
+                }
+                // Ensure the docente has the 'op_docente' role
+                if (!$docente->hasRole('op_docente')) {
+                    $docente->assignRole('op_docente');
+                }
             }        
 
             $pre = new Precontrattuale();
@@ -68,6 +90,21 @@ class PrecontrattualeRepository extends BaseRepository {
                 $insegn->id)
             ); 
 
+            //se è impostata precontrattuale_sorgente memorizza i dati
+            //id_sorgente_rinnovo e motivazione
+            if (isset($data['precontrattuale_sorgente'])){
+                $pre->fill($data['precontrattuale_sorgente']);
+                $pre->save();
+
+                $sorgentePrecontr = $pre->sorgenteRinnovo;
+        
+                if ($sorgentePrecontr) {
+                    // Set sorgente_rinnovo_per_id in the found precontrattuale to the current precontrattuale's id
+                    $sorgentePrecontr->sorgente_rinnovo_per_id = $pre->id;
+                    $sorgentePrecontr->save();
+                }
+            }
+            
             //inivio email din notifica al docente RCP in automatico
             EmailService::sendEmailByType($insegn->id,"RCP");
 
@@ -81,7 +118,93 @@ class PrecontrattualeRepository extends BaseRepository {
         return $entity;
     }
 
-    
+    public function changeContatoreInsegnamentiManuale(array $data){  
+        DB::beginTransaction(); 
+        try {
+            
+            $pre = Precontrattuale::where('insegn_id', $data['insegn_id'])->first(); 
+            $insegn = $pre->insegnamento;
+            $insegn->contatore_insegnamenti_manuale = $data['entity']['contatore_insegnamenti_manuale'];
+            $insegn->motivazione_contatore = $data['entity']['motivazione_contatore'];
+            $insegn->save();
+            
+            if ($insegn->contatore_insegnamenti_manuale==null){
+                $pre->storyprocess()->save(
+                    PrecontrattualeService::createStoryProcess('Cancellato inserimento contatore insegnamenti', 
+                    $insegn->id)
+                ); 
+            }else{
+                $pre->storyprocess()->save(
+                    PrecontrattualeService::createStoryProcess('Inserito contatore insegnamenti: valore precedente '
+                            . $data['entity']['contatore_insegnamenti'] .' valore attuale '.$data['entity']['contatore_insegnamenti_manuale']. '. Motivazione '.$data['entity']['motivazione_contatore'], 
+                    $insegn->id)
+                ); 
+            }
+            
+
+        } catch(\Exception $e) {
+            
+            DB::rollback();
+            throw $e;
+        }
+
+        DB::commit();       
+        //$entity = Precontrattuale::with(['insegnamento','validazioni','sendemailsrcp'])->find($pre->id);
+        return $insegn;
+    }    
+
+    public function changeRinnovo(array $data){  
+        DB::beginTransaction(); 
+        try {
+            
+            $pre = Precontrattuale::where('insegn_id', $data['insegn_id'])->first(); 
+
+            $previusSorgentePrecontr = $pre->sorgenteRinnovo;
+            if ($previusSorgentePrecontr) {
+                //reset condizioni iniziali
+                $previusSorgentePrecontr->sorgente_rinnovo_per_id = null;
+                $previusSorgentePrecontr->save();
+            }
+
+            $pre->id_sorgente_rinnovo = $data['entity']['id_sorgente_rinnovo'] ?? null;
+            $pre->motivazione_sorgente_rinnovo = $data['entity']['motivazione_sorgente_rinnovo'] ?? null;           
+            $pre->save();
+
+            $pre->load('sorgenteRinnovo'); // Reload the relationship
+            
+            $sorgentePrecontr = $pre->sorgenteRinnovo;
+            if ($sorgentePrecontr) {
+                // Set sorgente_rinnovo_per_id in the found precontrattuale to the current precontrattuale's id
+                $sorgentePrecontr->sorgente_rinnovo_per_id = $pre->id;
+                $sorgentePrecontr->save();
+            }
+                
+            $message = 'Modificato riferimento rinnovo ';
+            // Check if id_sorgente_rinnovo is set and not null
+            if (isset($data['entity']['id_sorgente_rinnovo']) && !empty($data['entity']['id_sorgente_rinnovo'])) {
+                $message .= '- Codice precontrattuale: '.$data['entity']['id_sorgente_rinnovo'];                
+            } else if (isset($data['entity']['motivazione_sorgente_rinnovo']) && !empty($data['entity']['motivazione_sorgente_rinnovo'])) {
+                // Append motivazione_sorgente_rinnovo to the message if it is set and not empty
+                $message .= ' - Giustificativo: ' . $data['entity']['motivazione_sorgente_rinnovo'];
+            }
+                
+            $pre->storyprocess()->save(
+                PrecontrattualeService::createStoryProcess($message, 
+                $pre->insegn_id,)
+            );             
+            
+
+        } catch(\Exception $e) {
+            
+            DB::rollback();
+            throw $e;
+        }
+
+        DB::commit();       
+        //$entity = Precontrattuale::with(['insegnamento','validazioni','sendemailsrcp'])->find($pre->id);
+        return $pre;
+    }    
+
 
     public function newIncompat(array $data){  
         DB::beginTransaction(); 
@@ -202,7 +325,7 @@ class PrecontrattualeRepository extends BaseRepository {
     }  
     
 
-    public function newPresavisioneAccettazione($data, $pre){
+    public function newPresavisioneAccettazione($data, $pre, $msg = null){
         DB::beginTransaction(); 
         try {
 
@@ -227,11 +350,30 @@ class PrecontrattualeRepository extends BaseRepository {
             $valid = Validazioni::where('insegn_id', $pre->insegn_id)->first();
             $valid->flag_accept = true;
             $valid->date_accept = Carbon::now()->format(config('unidem.datetime_format'));
+            $valid->tipo_accettazione = $data['tipo_accettazione'];
             $valid->save();
 
+
+            $pre->storyprocess()->save(
+                PrecontrattualeService::createStoryProcess('Presa visione e accettazione contratto'.($msg ? '. Contratto acquisito. '.$msg : ''), 
+                $pre->insegn_id,
+                $pre->user)
+            ); 
+
         } catch(\Exception $e) {
-                
+            Log::error($e);
+
             DB::rollback();
+
+            $handler = new Handler(Container::getInstance());
+            $handler->report($e);
+
+            if ($data && array_key_exists('nrecord',$data) && $data['nrecord']){
+                //cancello la bozza creata
+                $sc = new SoapControllerTitulus(new SoapWrapper);
+                $sc->deleteDocument($data['nrecord']);
+            }
+
             throw $e;
         }
         DB::commit();  
@@ -258,7 +400,7 @@ class PrecontrattualeRepository extends BaseRepository {
             //creazione dell'allegato 
             $result = PrecontrattualeService::createContrattoBozza($data['insegn_id']);
             $this->saveAttachments([$result], Precontrattuale::where('insegn_id', $data['insegn_id'])->first());
-            $data = EmailService::sendEmailByType($data['insegn_id'],"CMU");
+            EmailService::sendEmailByType($data['insegn_id'],"CMU");
 
             $precontr = $valid->precontrattuale()->first(); 
             $precontr->storyprocess()->save(
@@ -312,6 +454,47 @@ class PrecontrattualeRepository extends BaseRepository {
         DB::commit();  
         return Precontrattuale::where('insegn_id', $data['insegn_id'])->first();
     }
+
+    public function annullaAnnullaContratto(array $data){
+        DB::beginTransaction(); 
+        try {
+
+            $precontr = Precontrattuale::where('insegn_id', $data['insegn_id'])->first();             
+                     
+             //se il contratto è in stato 3 (annulla firmato) passi allo stato 1 (firmato)     
+            if ($precontr->stato == 3){
+                $precontr->stato = 1;  
+            }else{
+                $precontr->stato = 0; 
+            }
+            
+            $msg = '';
+            if ($precontr->tipo_annullamento == 'REVOC'){
+                $msg = 'Annulla revoca del contratto';
+            }else{
+                $msg = 'Annulla rinuncia';
+            }
+
+            //$precontr->fill($data['entity']);
+            $precontr->date_annullamento = null;
+            $precontr->tipo_annullamento = null;
+            $precontr->motivazione = null;
+            $precontr->save();
+
+            $precontr->storyprocess()->save(
+                PrecontrattualeService::createStoryProcess($msg, 
+                $precontr->insegn_id)
+            ); 
+            
+        } catch(\Exception $e) {
+            
+            DB::rollback();
+            throw $e;
+        }
+        DB::commit();  
+        return Precontrattuale::where('insegn_id', $data['insegn_id'])->first();
+    }
+
     
     
     public function rinunciaCompenso(array $data){

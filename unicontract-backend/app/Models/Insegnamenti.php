@@ -12,6 +12,7 @@ use App\Service\UtilService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
+use App\Uniurbdb\CorsoDiStudio;
 
 class Insegnamenti extends Model {
     /**
@@ -46,7 +47,10 @@ class Insegnamenti extends Model {
         'stato',
         'storico',
         'user_role',
-        'dip_cod'
+        'dip_cod',
+        'contatore_insegnamenti_manuale',
+        'motivazione_contatore',
+        'cds_cod'
     ];
 
     protected $casts = [
@@ -148,6 +152,17 @@ class Insegnamenti extends Model {
         return $this->hasOne(Precontrattuale::class,'insegn_id','id');
     }
 
+    public function corsodistudio()
+    {     
+        return $this->hasMany(CorsoDiStudio::class,'id_ugov','cds_cod');
+    }
+
+    public function setDataFromUgovDelibera(InsegnamUgov $insegnamentoUgov){
+        $this->num_delibera = $insegnamentoUgov->numero;
+        $this->tipo_atto = $insegnamentoUgov->tipo_atto_des;
+        $this->data_delibera =$insegnamentoUgov->data;
+    }
+
     public function setDataFromUgov(InsegnamUgov $insegnamentoUgov){
         
         $this->compenso = $insegnamentoUgov->compenso;
@@ -164,6 +179,7 @@ class Insegnamenti extends Model {
         $this->ciclo = $insegnamentoUgov->des_tipo_ciclo;
         $this->settore = $insegnamentoUgov->sett_des;
         $this->cod_settore = $insegnamentoUgov->sett_cod;
+        $this->cds_cod = $insegnamentoUgov->cds_cod;
 
         // <input type="hidden" name="coper_id" [(ngModel)]="item.coper_id" >
         // <input type="hidden" name="ruolo" [(ngModel)]="item.ruolo_doc_cod">
@@ -194,27 +210,71 @@ class Insegnamenti extends Model {
         
         //$data_delibera = Carbon::createFromFormat(, $this->data_delibera)->format('Y-m-d');
         
+        //Direttore di dipartimento
+        //Senato Accademico
+        //Consiglio di Dipartimento
+
         if($this->emittente == "Consiglio di Dipartimento") {
             $tipo_emitt = "Consiglio";
-        } else if ($this->tipo_emitt == "Direttore di dipartimento") {
+        } else if ($this->emittente == "Direttore di dipartimento") {
             $tipo_emitt = "Direttore";
         }else{
             $tipo_emitt = $this->emittente;
         }
-        
-        return "delibera n. ".$this->num_delibera." del ". $this->dataDelibera()." dal ".$tipo_emitt." del ".$this->dipartimento;  
+
+        //Decreto Direttore
+        //Disposizione Direttore
+        //Delibera
+
+        if ($this->tipo_atto == "Delibera") {
+            $tipo_atto = "delibera";
+        } else if ($this->tipo_atto == "Decreto Direttore") {
+            $tipo_atto = "decreto";
+        } else if ($this->tipo_atto == "Disposizione Direttore") {
+            $tipo_atto = "disposizione";
+        }else{
+            $tipo_atto = $this->tipo_atto;
+        }
+
+        return $tipo_atto." n. ".$this->num_delibera." del ". $this->dataDelibera()." dal ".$tipo_emitt." del ".$this->dipartimento;          
     }
 
-    public function contatore(){    
+    public function contatore()
+    {
+        // Use the new method to get both counter and method
+        $result = $this->contatoreAndMethod();
+        
+        // Return only the counter value
+        return $result['counter'];
+    }
 
-        return InsegnamUgovController::contatoreInsegnamenti($this->coper_id);
+    public function contatoreAndMethod(){    
 
-        // $coper_id = $this->coper_id;
-        // $value = Cache::get('counter_'.$coper_id, function () use($coper_id) {
-        //     return InsegnamUgovController::contatoreInsegnamenti($coper_id);
-        // });
+        //return InsegnamUgovController::contatoreInsegnamenti($this->coper_id);
+        if ($this->contatore_insegnamenti_manuale != null){
+            return [
+                'counter' => $this->contatore_insegnamenti_manuale,
+                'method' => 'manual'
+            ];
+        }
 
-        // return $value;
+        // First, check if the chain is complete
+        if ($this->precontr->isCompleteChain()) {
+            return [
+                'counter' => $this->precontr->countSorgenteRinnovo(),
+                'method' => 'complete_chain'
+            ];
+        }
+
+        $coper_id = $this->coper_id;
+        $value = Cache::remember('counter_'.$coper_id, 60, function () use($coper_id) {
+            return InsegnamUgovController::contatoreInsegnamenti($coper_id);
+        });
+
+        return [
+            'counter' => $value,
+            'method' => 'cached_calculation'
+        ];
     }
 
      // RESTITUISCE L'EPIGRAFE DEL RUOLO DOCENTE
@@ -317,15 +377,33 @@ class Insegnamenti extends Model {
 
     public function modalitadiPagamento(){
             
-        // VERIFICA SE L'INSEGNAMENTO E' A CAVALLO TRA DUE ANNI
-        $delta = substr($this->dataInizioPeriodo(), -4) - substr($this->dataFinePeriodo(), -4);
-        
-        if($delta != 0) {
-            return "due soluzioni, di cui la seconda al termine del contratto";
-        } else {
-            return "un'unica soluzione al termine del contratto";
-        }
+        //Delibera n. 318/2022 del Consiglio di Amministrazione del 28/10/2022
+        if ($this->aa >= 2022){
+            if($this->compenso > 3000) {
+                if (!$this->precontr->a2modalitapagamento->soluzione_pagamento){
+                    abort(404, 'Scegliere soluzione di pagamento');
+                }
+                //il docente può scegliere tra una o due soluzioni
+                if ($this->precontr->a2modalitapagamento->soluzione_pagamento == 'una_rata'){
+                    return "un'unica soluzione al termine del contratto";
+                }
+                return "due soluzioni, di cui la seconda al termine del contratto";
 
+            } else {
+                return "un'unica soluzione al termine del contratto";
+            }
+        }else{
+            // VERIFICA SE L'INSEGNAMENTO E' A CAVALLO TRA DUE ANNI
+            $delta = substr($this->dataInizioPeriodo(), -4) - substr($this->dataFinePeriodo(), -4);
+                    
+            if($delta != 0) {
+                return "due soluzioni, di cui la seconda al termine del contratto";
+            } else {
+                return "un'unica soluzione al termine del contratto";
+            }
+        }
+        
+    
     }
 
 

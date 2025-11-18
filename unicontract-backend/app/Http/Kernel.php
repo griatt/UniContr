@@ -43,6 +43,11 @@ class Kernel extends HttpKernel
             'throttle:60,1',
             'bindings',
         ],
+        'saml' => [
+            \App\Http\Middleware\EncryptCookies::class,
+            \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+            \Illuminate\Session\Middleware\StartSession::class,
+        ],
     ];
 
     /**
@@ -72,5 +77,8 @@ class Kernel extends HttpKernel
         'auth.jwt' => \Tymon\JWTAuth\Http\Middleware\Authenticate::class,
         'role' => \Spatie\Permission\Middlewares\RoleMiddleware::class,
         'storeudate' => \App\Http\Middleware\StoreUdatePrecontrattuale::class,
+
+        'ownermiddleware' => \App\Http\Middleware\OwnerMiddleware::class,
+        'auth.api_or_apikey' => \App\Http\Middleware\AuthApiOrApiKey::class,
     ];
 }

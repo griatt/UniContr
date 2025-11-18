@@ -9,6 +9,7 @@ use App\Http\Controllers\iSearch;
 use Illuminate\Support\Facades\Log;
 use Artisaninweb\SoapWrapper\Exceptions\ServiceNotFound;
 use Exception;
+use SoapFault; 
 //https://github.com/artisaninweb/laravel-soap
 //add php.ini ext-soap
 
@@ -38,9 +39,10 @@ class SoapControllerTitulus implements iSearch
         ->wsdl('https://'.config('titulus.username').':'.config('titulus.password').'@'.config('titulus.host').'/titulus_ws/services/Titulus4?wsdl')
         ->trace(true)       
         ->options([
-          'soap_version' => SOAP_1_1,          
+          'soap_version' => 1,          
           'login' => config('titulus.username'),
-          'password' => config('titulus.password'),          
+          'password' => config('titulus.password'),    
+          'cache_wsdl'   => WSDL_CACHE_NONE        
           //'maintain'=>true, //SESSION_MAINTAIN_PROPERTY
       ]);        
     });        
@@ -59,7 +61,7 @@ class SoapControllerTitulus implements iSearch
             Log::error($e);  
 
             //se al terzo tentativo ho ancora errore rilancio e esco
-            if ($try==2){
+            if ($try==0){
               throw $e;
             }
             
@@ -316,6 +318,61 @@ class SoapControllerTitulus implements iSearch
     return $response;
   }
   
+
+  /**
+   * postIt
+   *
+   * @param  mixed $id nrecord, numero di protocollo, numero di repertorio
+   * @param  mixed $postitContent contenuto del postIt
+   * @return void
+   */
+  public function postIt($id, $postitContent){
+    $response = $this->soapWrapper->call('titulus.postIt', [
+      'id' => $id,    
+      'postitContent' => $postitContent,    
+    ]);
+    return $response;
+  }
+
+  
+  /**
+   * cancelDocument Annullamento di un documento protocollato
+   *
+   * @param  mixed $id nrecord, numero di protocollo, numero di repertorio
+   * @param  mixed $reason motivo della dell'annullamento 
+   * @return void
+   */
+  public function cancelDocument($id, $reason){
+    $response = $this->soapWrapper->call('titulus.cancelDocument', [
+      'id' => $id,    
+      'reason' => $reason,    
+    ]);
+    return $response;
+  }
+
+  
+  /**
+   * deleteDocument cancellazione di un documento non protocollato NON ha la motivazione
+   * per le bozze
+   *
+   * @param  mixed $id nrecord, numero di protocollo, numero di repertorio 
+   * @return void
+   */
+  public function deleteDocument($id){
+    Log::info("[deleteDocument] Attempting deleteDocument with ID $id");                   
+   
+    $response = $this->soapWrapper->call('titulus.deleteDocument', [
+      'id' => $id          
+    ]);
+
+    // Log the response received from the SOAP service
+    Log::info("Response from deleting document with ID $id: " . json_encode($response));
+
+    return $response;
+  }
+
+
+
   /**
    * imposta utente reale
    * @param $user nome utente
